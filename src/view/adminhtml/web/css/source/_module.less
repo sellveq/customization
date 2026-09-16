@@ -1,7 +1,50 @@
+/**
+ * @category    ScandiPWA
+ * @package     ScandiPWA_Customization
+ * @copyright   Copyright © Scandiweb, Inc. All rights reserved.
+ * @copyright   Modifications © Selveq. All rights reserved.
+ * @license     OSL-3.0 (Open Software License ("OSL") v. 3.0)
+ * See LICENSE for license details.
+ */
+
+.scandipwa-color-field {
+    align-items: center;
+    display: inline-flex;
+    gap: 8px;
+
+    > input {
+        flex: 0 0 auto;
+        width: 11rem;
+    }
+
+    > .scandipwa-color-picker {
+        display: none;
+    }
+
+    &._empty .sp-preview-inner {
+        display: none;
+    }
+}
+
+.scandipwa-color-swatch.sp-replacer {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    height: 32px;
+    padding: 3px;
+    width: 42px;
+
+    > .sp-preview {
+        box-sizing: border-box;
+        height: 100%;
+        margin: 0;
+        width: 100%;
+    }
+}
+
 .config-nav-block.scandipwa {
     strong {
         &:before {
-            background: url("../ScandiPWA_Customization/images/scandipwa-logo.png") no-repeat center;
+            background: url('../ScandiPWA_Customization/images/scandipwa-logo.png') no-repeat center;
             background-size: contain;
             width: 16px;
             height: 16px;

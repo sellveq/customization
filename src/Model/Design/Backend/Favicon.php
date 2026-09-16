@@ -1,23 +1,28 @@
 <?php
+
 /**
- * @category ScandiPWA
- * @package ScandiPWA\Customization
- * @author Rihards Abolins <info@scandiweb.com>
- * @copyright Copyright (c) 2015 Scandiweb, Ltd (http://scandiweb.com)
- * @license http://opensource.org/licenses/afl-3.0.php Academic Free License (AFL 3.0)
+ * @category    ScandiPWA
+ * @package     ScandiPWA_Customization
+ * @copyright   Copyright © 2015 Scandiweb, Ltd (http://scandiweb.com)
+ * @copyright   Modifications © Selveq. All rights reserved.
+ * @license     http://opensource.org/licenses/afl-3.0.php Academic Free License (AFL 3.0)
+ * @license     OSL-3.0 (Open Software License ("OSL") v. 3.0)
+ * See LICENSE for license details.
  */
 
 namespace ScandiPWA\Customization\Model\Design\Backend;
 
-use ScandiPWA\Customization\Controller\AppIcon;
+use InvalidArgumentException;
+use JsonException;
 use Magento\Config\Model\Config\Backend\File\RequestData\RequestDataInterface;
 use Magento\Framework\App\Cache\TypeListInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
-use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\Data\Collection\AbstractDb;
 use Magento\Framework\Exception\FileSystemException;
 use Magento\Framework\Exception\LocalizedException;
+use Magento\Framework\Exception\ValidatorException;
 use Magento\Framework\Filesystem;
+use Magento\Framework\Filesystem\Io\File as IoFileSystem;
 use Magento\Framework\Model\Context;
 use Magento\Framework\Model\ResourceModel\AbstractResource;
 use Magento\Framework\Registry;
@@ -25,30 +30,12 @@ use Magento\Framework\UrlInterface;
 use Magento\MediaStorage\Helper\File\Storage\Database;
 use Magento\MediaStorage\Model\File\UploaderFactory;
 use Magento\Theme\Model\Design\Backend\Favicon as SourceFavicon;
+use ScandiPWA\Customization\Controller\AppIcon;
+use ScandiPWA\Customization\Controller\Webmanifest;
 
-/**
- * Class Favicon
- * @package ScandiPWA\Customization\Model\Design\Backend
- */
 class Favicon extends SourceFavicon
 {
     /**
-     * @var AppIcon
-     */
-    protected $appIcon;
-
-    /**
-     * @var Database
-     */
-    protected $databaseHelper;
-
-    /**
-     * @var string
-     */
-    private $fileBaseName;
-
-    /**
-     * Favicon constructor.
      * @param Context $context
      * @param Registry $registry
      * @param ScopeConfigInterface $config
@@ -58,10 +45,13 @@ class Favicon extends SourceFavicon
      * @param Filesystem $filesystem
      * @param UrlInterface $urlBuilder
      * @param AppIcon $appIcon
+     * @param Webmanifest $webmanifest
      * @param AbstractResource|null $resource
      * @param AbstractDb|null $resourceCollection
      * @param array $data
      * @param Database|null $databaseHelper
+     * @param IoFileSystem|null $ioFileSystem
+     * @SuppressWarnings(PHPMD.ExcessiveParameterList)
      */
     public function __construct(
         Context $context,
@@ -72,121 +62,141 @@ class Favicon extends SourceFavicon
         RequestDataInterface $requestData,
         Filesystem $filesystem,
         UrlInterface $urlBuilder,
-        AppIcon $appIcon,
-        Database $databaseHelper,
-        AbstractResource $resource = null,
-        AbstractDb $resourceCollection = null,
-        array $data = []
-    ){
-        $this->appIcon = $appIcon;
-        $this->databaseHelper = $databaseHelper;
-        parent::__construct($context, $registry, $config, $cacheTypeList, $uploaderFactory, $requestData, $filesystem, $urlBuilder, $resource, $resourceCollection, $data, $databaseHelper);
-    }
-
-    /**
-     * Generates webmanifest icons
-     *
-     * @return Favicon
-     */
-    public function afterSave() {
-        $sourcePath = $this->_mediaDirectory->getAbsolutePath(
-            $this->_appendScopeInfo(self::UPLOAD_DIR) . '/' . $this->fileBaseName
+        private readonly AppIcon $appIcon,
+        private readonly Webmanifest $webmanifest,
+        ?AbstractResource $resource = null,
+        ?AbstractDb $resourceCollection = null,
+        array $data = [],
+        ?Database $databaseHelper = null,
+        ?IoFileSystem $ioFileSystem = null
+    ) {
+        parent::__construct(
+            $context,
+            $registry,
+            $config,
+            $cacheTypeList,
+            $uploaderFactory,
+            $requestData,
+            $filesystem,
+            $urlBuilder,
+            $resource,
+            $resourceCollection,
+            $data,
+            $databaseHelper,
+            $ioFileSystem
         );
-        $this->appIcon->buildAppIcons($sourcePath);
-
-        return parent::afterSave();
     }
 
     /**
-     * Save uploaded file and remote temporary file before saving config value
-     *
-     * @return $this
-     * @throws LocalizedException
+     * {@inheritdoc}
+     * @throws FileSystemException
+     * @throws ValidatorException
      */
-    public function beforeSave() {
+    public function beforeSave()
+    {
         $values = $this->getValue();
         $value = reset($values) ?: [];
+        $isUpload = is_array($value) && !isset($value['exists']);
 
-        $this->createFaviconDirectory();
+        parent::beforeSave();
 
-        // Need to check name when it is uploaded in the media gallery
-        $file = $value['file'] ?? $value['name'] ?? null;
-        if (!isset($file)) {
-            throw new LocalizedException(
-                __('%1 does not contain field \'file\'', $this->getData('field_config/field'))
-            );
+        if ($isUpload) {
+            $this->refuseNonSquareImage();
         }
-        if (isset($value['exists'])) {
-            $this->setValue($file);
-            return $this;
-        }
-
-        //phpcs:ignore Magento2.Functions.DiscouragedFunction
-        $this->fileBaseName = basename($file);
-        $this->updateMediaDirectory($this->fileBaseName, $value['url']);
 
         return $this;
     }
 
     /**
-     * @return bool
+     * {@inheritdoc}
      * @throws FileSystemException
+     * @throws InvalidArgumentException
+     * @throws JsonException
+     * @throws ValidatorException
      */
-    protected function createFaviconDirectory() {
-        $directoryWriter = $this->_filesystem->getDirectoryWrite(DirectoryList::MEDIA);
-        try {
-            return $directoryWriter->create('favicon');
-        } catch (\Exception $e) {
-            return false;
+    public function afterSave()
+    {
+        $sourcePath = $this->getStoredImagePath();
+
+        // a re-save must not rebuild, but a store whose icons were never generated gets them on the next save
+        if ($sourcePath !== null && ($this->isValueChanged() || !$this->appIcon->hasGeneratedIcons())) {
+            $this->appIcon->buildAppIcons($sourcePath);
+            $this->webmanifest->write();
         }
+
+        return parent::afterSave();
     }
 
     /**
-     * Move file to the correct media directory
-     *
-     * @param string $filename
-     * @param string $url
-     * @throws LocalizedException
-     */
-    private function updateMediaDirectory(string $filename, string $url) {
-        $relativeMediaPath = $this->getRelativeMediaPath($url);
-        $tmpMediaPath = $this->getTmpMediaPath($filename);
-        $mediaPath = $this->_mediaDirectory->isFile($relativeMediaPath) ? $relativeMediaPath : $tmpMediaPath;
-        $destinationMediaPath = $this->_getUploadDir() . '/' . $filename;
-
-        $result = $mediaPath === $destinationMediaPath;
-        if (!$result) {
-
-            $result = $this->_mediaDirectory->copyFile(
-                $mediaPath,
-                $destinationMediaPath
-            );
-            $this->databaseHelper->renameFile(
-                $mediaPath,
-                $destinationMediaPath
-            );
-        }
-        if ($result) {
-            if ($mediaPath === $tmpMediaPath) {
-                $this->_mediaDirectory->delete($mediaPath);
-            }
-            if ($this->_addWhetherScopeInfo()) {
-                $filename = $this->_prependScopeInfo($filename);
-            }
-
-            $this->setValue($filename);
-        } else {
-            $this->unsValue();
-        }
-    }
-
-    /**
-     * Getter for allowed extensions of uploaded files.
-     *
-     * @return string[]
+     * {@inheritdoc}
      */
     public function getAllowedExtensions()
     {
         return ['png'];
+    }
+
+    /**
+     * absolute path of the saved favicon, resolved the way core's File::afterLoad() resolves it
+     * @return string|null
+     * @throws ValidatorException
+     */
+    private function getStoredImagePath()
+    {
+        $value = $this->getValue();
+
+        if (!$value || is_array($value)) {
+            return null;
+        }
+
+        //phpcs:ignore Magento2.Functions.DiscouragedFunction
+        $path = $this->_getUploadDir() . '/' . basename($value);
+
+        return $this->_mediaDirectory->isFile($path) ? $this->_mediaDirectory->getAbsolutePath($path) : null;
+    }
+
+    /**
+     * refuse a source the resizer would squash: keepFrame(false) makes every icon exactly square
+     * @return void
+     * @throws FileSystemException
+     * @throws LocalizedException
+     * @throws ValidatorException
+     */
+    private function refuseNonSquareImage()
+    {
+        $sourcePath = $this->getStoredImagePath();
+
+        if ($sourcePath === null) {
+            return;
+        }
+
+        //phpcs:ignore Magento2.Functions.DiscouragedFunction
+        $size = getimagesize($sourcePath);
+
+        if ($size === false) {
+            $this->deleteStoredImage($sourcePath);
+
+            throw new LocalizedException(__('The favicon could not be read as an image.'));
+        }
+
+        if ($size[0] !== $size[1]) {
+            $this->deleteStoredImage($sourcePath);
+
+            throw new LocalizedException(
+                __('The favicon must be square; this one is %1 by %2 pixels.', $size[0], $size[1])
+            );
+        }
+    }
+
+    /**
+     * remove a refused upload so a rejected save leaves nothing behind
+     * @param string $sourcePath
+     * @return void
+     * @throws FileSystemException
+     * @throws ValidatorException
+     */
+    private function deleteStoredImage(string $sourcePath)
+    {
+        $this->_mediaDirectory->delete($this->_mediaDirectory->getRelativePath($sourcePath));
+        $this->unsValue();
     }
 }

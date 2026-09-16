@@ -1,21 +1,24 @@
 <?php
+
 /**
- * ScandiPWA - Progressive Web App for Magento
- *
- * Copyright © Scandiweb, Inc. All rights reserved.
+ * @category    ScandiPWA
+ * @package     ScandiPWA_Customization
+ * @copyright   Copyright © Scandiweb, Inc. All rights reserved.
+ * @copyright   Modifications © Selveq. All rights reserved.
+ * @license     OSL-3.0 (Open Software License ("OSL") v. 3.0)
  * See LICENSE for license details.
- *
- * @license OSL-3.0 (Open Software License ("OSL") v. 3.0)
- * @package scandipwa/customization
- * @link https://github.com/scandipwa/quote-graphql
  */
 
 namespace ScandiPWA\Customization\View\Result;
 
+use InvalidArgumentException;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\Filesystem\DirectoryList;
+use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
-use Magento\Framework\Locale\Resolver;
+use Magento\Framework\Exception\ValidatorException;
+use Magento\Framework\Locale\ResolverInterface;
+use Magento\Framework\Serialize\Serializer\Json;
 use Magento\Framework\Translate\InlineInterface;
 use Magento\Framework\View\Element\Template\Context;
 use Magento\Framework\View\EntitySpecificHandlesList;
@@ -27,14 +30,9 @@ use Magento\Framework\View\Page\Config\RendererFactory;
 use Magento\Framework\View\Page\Layout\Reader;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
-use ScandiPWA\Locale\View\Result\Page as LocalePage;
 use ScandiPWA\Customization\Controller\AppIcon;
-use Magento\Framework\Serialize\Serializer\Json;
+use ScandiPWA\Locale\View\Result\Page as LocalePage;
 
-/**
- * Class Page
- * @package ScandiPWA\Customization\View\Result
- */
 class Page extends LocalePage
 {
     /**
@@ -43,24 +41,8 @@ class Page extends LocalePage
     protected $scopeConfig;
 
     /**
-     * @var StoreManagerInterface
-     */
-    protected $storeManager;
-
-    /**
-     * @var Json
-     */
-    protected $json;
-
-    /**
-     * @var AppIcon
-     */
-    protected $appIcon;
-
-    /**
-     * Page constructor.
      * @param StoreManagerInterface $storeManager
-     * @param Resolver $localeResolver
+     * @param ResolverInterface $localeResolver
      * @param Context $context
      * @param LayoutFactory $layoutFactory
      * @param ReaderPool $layoutReaderPool
@@ -72,15 +54,15 @@ class Page extends LocalePage
      * @param DirectoryList $directoryList
      * @param Json $json
      * @param string $template
-     * @param AppIcon $appIcon,
+     * @param AppIcon $appIcon
      * @param bool $isIsolated
      * @param EntitySpecificHandlesList|null $entitySpecificHandlesList
-     * @param null $action
+     * @param string|null $action
      * @param array $rootTemplatePool
      */
     public function __construct(
-        StoreManagerInterface $storeManager,
-        Resolver $localeResolver,
+        protected readonly StoreManagerInterface $storeManager,
+        ResolverInterface $localeResolver,
         Context $context,
         LayoutFactory $layoutFactory,
         ReaderPool $layoutReaderPool,
@@ -90,18 +72,15 @@ class Page extends LocalePage
         RendererFactory $pageConfigRendererFactory,
         Reader $pageLayoutReader,
         DirectoryList $directoryList,
-        Json $json,
+        protected readonly Json $json,
         string $template,
-        AppIcon $appIcon,
+        protected readonly AppIcon $appIcon,
         $isIsolated = false,
-        EntitySpecificHandlesList $entitySpecificHandlesList = null,
+        ?EntitySpecificHandlesList $entitySpecificHandlesList = null,
         $action = null,
         $rootTemplatePool = []
     ) {
         $this->scopeConfig = $context->getScopeConfig();
-        $this->storeManager = $storeManager;
-        $this->json = $json;
-        $this->appIcon = $appIcon;
 
         parent::__construct(
             $localeResolver,
@@ -123,14 +102,13 @@ class Page extends LocalePage
     }
 
     /**
-     * Get config by section name
+     * get config by section name
      * @param string $sectionName
-     * @return array
+     * @return mixed a section as an array, a single path as its scalar value, null when unset
      * @throws NoSuchEntityException
      */
-    public function getThemeConfiguration(
-        string $sectionName
-    ) {
+    public function getThemeConfiguration(string $sectionName)
+    {
         return $this->scopeConfig->getValue(
             $sectionName,
             ScopeInterface::SCOPE_STORE,
@@ -139,9 +117,9 @@ class Page extends LocalePage
     }
 
     /**
-     * Get store list json
-     *
-     * @return bool|false|string
+     * get store list json
+     * @return string
+     * @throws InvalidArgumentException
      */
     public function getStoreListJson()
     {
@@ -156,7 +134,10 @@ class Page extends LocalePage
     }
 
     /**
+     * get app icon links data
      * @return array[]
+     * @throws NoSuchEntityException
+     * @throws ValidatorException
      */
     public function getAppIconData()
     {
@@ -164,15 +145,20 @@ class Page extends LocalePage
     }
 
     /**
+     * get current website code
      * @return string
+     * @throws LocalizedException
      */
     public function getWebsiteCode()
     {
         return $this->storeManager->getWebsite()->getCode();
     }
-    
+
     /**
+     * get current store currency code
      * @return string
+     * @throws LocalizedException
+     * @throws NoSuchEntityException
      */
     public function getStoreCurrency()
     {

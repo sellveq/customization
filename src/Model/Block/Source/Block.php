@@ -1,43 +1,32 @@
 <?php
+
 /**
- * @category ScandiPWA
- * @package ScandiPWA\Customization
- * @author Alfreds Genkins <info@scandiweb.com>
- * @copyright Copyright (c) 2015 Scandiweb, Ltd (http://scandiweb.com)
- * @license http://opensource.org/licenses/afl-3.0.php Academic Free License (AFL 3.0)
+ * @category    ScandiPWA
+ * @package     ScandiPWA_Customization
+ * @copyright   Copyright © 2015 Scandiweb, Ltd (http://scandiweb.com)
+ * @copyright   Modifications © Selveq. All rights reserved.
+ * @license     http://opensource.org/licenses/afl-3.0.php Academic Free License (AFL 3.0)
+ * @license     OSL-3.0 (Open Software License ("OSL") v. 3.0)
+ * See LICENSE for license details.
  */
 
 namespace ScandiPWA\Customization\Model\Block\Source;
 
+use Magento\Cms\Api\Data\BlockInterface;
 use Magento\Cms\Model\ResourceModel\Block\CollectionFactory;
 use Magento\Eav\Model\Entity\Attribute\Source\AbstractSource;
-use Magento\Cms\Api\Data\BlockInterface;
 
-/**
- * Class Block
- * @package ScandiPWA\Customization\Model\Block\Source
- */
 class Block extends AbstractSource
 {
     /**
-     * Block collection factory
-     *
-     * @var CollectionFactory
-     */
-    protected $collectionFactory;
-
-    /**
-     * Construct
-     *
      * @param CollectionFactory $collectionFactory
      */
-    public function __construct(CollectionFactory $collectionFactory)
-    {
-        $this->collectionFactory = $collectionFactory;
-    }
+    public function __construct(
+        private readonly CollectionFactory $collectionFactory
+    ) {}
 
     /**
-     * @return array
+     * {@inheritdoc}
      */
     public function getAllOptions()
     {
@@ -56,10 +45,10 @@ class Block extends AbstractSource
                 ];
             }
 
-            if (is_array($this->_options)) {
+            if ($this->_options) {
                 array_unshift($this->_options, ['value' => '', 'label' => __('Please select a static block.')]);
             } else {
-                $this->_options = ['value' => '', 'label' => __('No static blocks to select.')];
+                $this->_options = [['value' => '', 'label' => __('No static blocks to select.')]];
             }
         }
 

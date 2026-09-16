@@ -1,48 +1,36 @@
 <?php
+
 /**
- * @category ScandiPWA
- * @package ScandiPWA\Customization
- * @author Alfreds Genkins <info@scandiweb.com>
- * @copyright Copyright (c) 2015 Scandiweb, Ltd (http://scandiweb.com)
- * @license http://opensource.org/licenses/afl-3.0.php Academic Free License (AFL 3.0)
+ * @category    ScandiPWA
+ * @package     ScandiPWA_Customization
+ * @copyright   Copyright © 2015 Scandiweb, Ltd (http://scandiweb.com)
+ * @copyright   Modifications © Selveq. All rights reserved.
+ * @license     http://opensource.org/licenses/afl-3.0.php Academic Free License (AFL 3.0)
+ * @license     OSL-3.0 (Open Software License ("OSL") v. 3.0)
+ * See LICENSE for license details.
  */
 
 namespace ScandiPWA\Customization\Model\Product\Attribute\Source;
 
 use Magento\Catalog\Model\ResourceModel\Eav\Attribute;
-use Magento\Framework\Exception\NoSuchEntityException;
-use Magento\Store\Model\StoreManagerInterface;
 use Magento\Catalog\Model\ResourceModel\Product\Attribute\CollectionFactory;
 use Magento\Eav\Model\Entity\Attribute\Source\AbstractSource;
+use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Store\Model\StoreManagerInterface;
 
 class VisibleOnFrontend extends AbstractSource
 {
     /**
-     * @var CollectionFactory
-     */
-    protected $collectionFactory;
-    /**
-     * @var StoreManagerInterface
-     */
-    protected $storeManager;
-    /**
-     * FilterableAttributeList constructor
-     *
      * @param CollectionFactory $collectionFactory
      * @param StoreManagerInterface $storeManager
      */
     public function __construct(
-        CollectionFactory $collectionFactory,
-        StoreManagerInterface $storeManager
-    ) {
-        $this->collectionFactory = $collectionFactory;
-        $this->storeManager = $storeManager;
-    }
+        private readonly CollectionFactory $collectionFactory,
+        private readonly StoreManagerInterface $storeManager
+    ) {}
 
     /**
-     * Retrieve All options
-     *
-     * @return array
+     * {@inheritdoc}
      * @throws NoSuchEntityException
      */
     public function getAllOptions()
@@ -65,10 +53,10 @@ class VisibleOnFrontend extends AbstractSource
                 ];
             }
 
-            if (is_array($this->_options)) {
+            if ($this->_options) {
                 array_unshift($this->_options, ['value' => '', 'label' => __('Please select an attribute.')]);
             } else {
-                $this->_options = ['value' => '', 'label' => __('No attributes (visible on frontend) to select.')];
+                $this->_options = [['value' => '', 'label' => __('No attributes (visible on frontend) to select.')]];
             }
         }
 

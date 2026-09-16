@@ -1,19 +1,24 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0"?>
+
 <!--
 /**
- * @category ScandiPWA
- * @package ScandiPWA\Customization
- * @author Rihards Abolins <info@scandiweb.com>
- * @copyright Copyright (c) 2015 Scandiweb, Ltd (http://scandiweb.com)
- * @license http://opensource.org/licenses/afl-3.0.php Academic Free License (AFL 3.0)
+ * @category    ScandiPWA
+ * @package     ScandiPWA_Customization
+ * @copyright   Copyright © 2015 Scandiweb, Ltd (http://scandiweb.com)
+ * @copyright   Modifications © Selveq. All rights reserved.
+ * @license     http://opensource.org/licenses/afl-3.0.php Academic Free License (AFL 3.0)
+ * @license     OSL-3.0 (Open Software License ("OSL") v. 3.0)
+ * See LICENSE for license details.
  */
 -->
-<form xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
+
+<form xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
     <fieldset name="other_settings" sortOrder="30">
         <fieldset name="head">
             <field name="head_shortcut_icon" formElement="imageUploader">
                 <settings>
-                    <notice translate="true">File should be called "favicon"!</notice>
+                    <notice translate="true">A square PNG; every app icon size is generated from it.</notice>
                     <label translate="true">Favicon Icon</label>
                     <componentType>imageUploader</componentType>
                 </settings>

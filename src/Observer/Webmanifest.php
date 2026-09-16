@@ -1,50 +1,46 @@
 <?php
+
 /**
- * @category ScandiPWA
- * @package ScandiPWA\Customization
- * @author Rihards Abolins <info@scandiweb.com>
- * @copyright Copyright (c) 2015 Scandiweb, Ltd (http://scandiweb.com)
- * @license http://opensource.org/licenses/afl-3.0.php Academic Free License (AFL 3.0)
+ * @category    ScandiPWA
+ * @package     ScandiPWA_Customization
+ * @copyright   Copyright © 2015 Scandiweb, Ltd (http://scandiweb.com)
+ * @copyright   Modifications © Selveq. All rights reserved.
+ * @license     http://opensource.org/licenses/afl-3.0.php Academic Free License (AFL 3.0)
+ * @license     OSL-3.0 (Open Software License ("OSL") v. 3.0)
+ * See LICENSE for license details.
  */
 
 namespace ScandiPWA\Customization\Observer;
 
 use Magento\Framework\Event\Observer;
 use Magento\Framework\Event\ObserverInterface;
-use Magento\Framework\Exception\NoSuchEntityException;
+use Psr\Log\LoggerInterface;
 use ScandiPWA\Customization\Controller\Webmanifest as WebmanifestController;
-use ScandiPWA\Customization\Controller\AppIcon;
+use Throwable;
 
-/**
- * Class Webmanifest
- * @package ScandiPWA\Customization\Observer
- */
 class Webmanifest implements ObserverInterface
 {
     /**
-     * @var WebmanifestController
+     * @param WebmanifestController $webmanifestController
+     * @param LoggerInterface $logger
      */
-    protected $webmanifestController;
-
-    protected $appIcon;
-
     public function __construct(
-        WebmanifestController $webmanifestController,
-        AppIcon $appIcon
-    )
-    {
-        $this->webmanifestController = $webmanifestController;
-        $this->appIcon = $appIcon;
-    }
+        private readonly WebmanifestController $webmanifestController,
+        private readonly LoggerInterface $logger
+    ) {}
 
     /**
-     * @param Observer $observer
-     * @throws NoSuchEntityException
+     * {@inheritdoc}
      */
     public function execute(Observer $observer)
     {
-        $data = $this->webmanifestController->load();
-        $data['icons'] = $this->appIcon->getIconData();
-        $this->webmanifestController->saveJson($data);
+        try {
+            $this->webmanifestController->write();
+        } catch (Throwable $e) {
+            $this->logger->error(
+                'ScandiPWA_Customization: the web manifest was not written: ' . $e->getMessage(),
+                ['exception' => $e]
+            );
+        }
     }
 }

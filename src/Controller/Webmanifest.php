@@ -1,31 +1,31 @@
 <?php
+
 /**
- * @category ScandiPWA
- * @package ScandiPWA\Customization
- * @author Rihards Abolins <info@scandiweb.com>
- * @copyright Copyright (c) 2015 Scandiweb, Ltd (http://scandiweb.com)
- * @license http://opensource.org/licenses/afl-3.0.php Academic Free License (AFL 3.0)
+ * @category    ScandiPWA
+ * @package     ScandiPWA_Customization
+ * @copyright   Copyright © 2015 Scandiweb, Ltd (http://scandiweb.com)
+ * @copyright   Modifications © Selveq. All rights reserved.
+ * @license     http://opensource.org/licenses/afl-3.0.php Academic Free License (AFL 3.0)
+ * @license     OSL-3.0 (Open Software License ("OSL") v. 3.0)
+ * See LICENSE for license details.
  */
 
 namespace ScandiPWA\Customization\Controller;
 
-use Magento\Framework\App\Config\Storage\WriterInterface;
+use JsonException;
 use Magento\Framework\App\Config\ScopeConfigInterface;
-use Magento\Framework\Exception\FileSystemException;
-use Magento\Framework\Filesystem;
 use Magento\Framework\App\Filesystem\DirectoryList;
+use Magento\Framework\Exception\FileSystemException;
+use Magento\Framework\Exception\ValidatorException;
+use Magento\Framework\Filesystem;
 
-/**
- * Class Webmanifest
- * @package ScandiPWA\Customization\Controller
- */
 class Webmanifest
 {
-    const WEBMANIFEST_CONFIG_PATH = 'webmanifest_customization/webmanifest/';
+    private const string WEBMANIFEST_CONFIG_PATH = 'webmanifest_customization/webmanifest/';
 
-    const STORAGE_PATH = 'webmanifest/manifest.json';
+    private const string STORAGE_PATH = 'webmanifest/manifest.json';
 
-    const ALLOWED_FIELDS = [
+    private const array ALLOWED_FIELDS = [
         'name',
         'short_name',
         'description',
@@ -48,46 +48,28 @@ class Webmanifest
     ];
 
     /**
-     * @var WriterInterface
-     */
-    protected $writer;
-
-    /**
-     * @var ScopeConfigInterface
-     */
-    protected $scopeConfig;
-
-    /**
-     * @var Filesystem
-     */
-    protected $fileSystem;
-
-    /**
-     * Webmanifest constructor.
-     * @param WriterInterface $writer
      * @param ScopeConfigInterface $scopeConfig
      * @param Filesystem $fileSystem
+     * @param AppIcon $appIcon
      */
     public function __construct(
-        WriterInterface $writer,
-        ScopeConfigInterface $scopeConfig,
-        Filesystem $fileSystem
-    )
-    {
-        $this->writer = $writer;
-        $this->scopeConfig = $scopeConfig;
-        $this->fileSystem = $fileSystem;
-    }
+        private readonly ScopeConfigInterface $scopeConfig,
+        private readonly Filesystem $fileSystem,
+        private readonly AppIcon $appIcon
+    ) {}
 
     /**
+     * generate JSON string from allowed web manifest fields
      * @param array $data
-     * @return false|string
+     * @return string|false
+     * @throws JsonException
      */
     protected function getGeneratedJson(array $data)
     {
         $arrayKeys = array_keys($data);
-        if (empty($arrayKeys))
+        if (empty($arrayKeys)) {
             return false;
+        }
 
         $unSupportedKeys = array_filter($arrayKeys, function ($key) {
             return !in_array($key, self::ALLOWED_FIELDS);
@@ -97,19 +79,24 @@ class Webmanifest
             unset($data[$unSupportedKey]);
         }
 
-        return json_encode($data);
+        return json_encode($data, JSON_THROW_ON_ERROR);
     }
 
     /**
+     * save web manifest JSON data to media storage
      * @param array $data
+     * @return void
      * @throws FileSystemException
+     * @throws JsonException
+     * @throws ValidatorException
      */
     public function saveJson(array $data)
     {
         $jsonData = $this->getGeneratedJson($data);
 
-        if (!$jsonData || empty($data))
+        if (!$jsonData || empty($data)) {
             return;
+        }
 
         $fileWriter = $this->fileSystem->getDirectoryWrite(DirectoryList::MEDIA);
 
@@ -117,6 +104,22 @@ class Webmanifest
     }
 
     /**
+     * the one writer: the data patch, the section observer and the favicon backend model all call it
+     * @return void
+     * @throws FileSystemException
+     * @throws JsonException
+     * @throws ValidatorException
+     */
+    public function write()
+    {
+        $data = $this->load();
+        $data['icons'] = $this->appIcon->getIconData();
+
+        $this->saveJson($data);
+    }
+
+    /**
+     * load web manifest configuration values
      * @return array
      */
     public function load()
@@ -130,8 +133,8 @@ class Webmanifest
                 }
                 $data[$field] = $value;
             }
-
         }
+
         return $data;
     }
 }

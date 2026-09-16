@@ -1,25 +1,57 @@
 {
-    "name": "scandipwa/customization",
-    "description": "Customization configuration for ScandiPWA",
+    "name": "selveq/customization",
+    "description": "Magento 2 Customization Configurations extension for ScandiPWA theme",
     "type": "magento2-module",
-     "license": [
+    "version": "3.0.0",
+    "license": [
         "OSL-3.0"
     ],
+    "authors": [
+        {
+            "name": "Scandiweb",
+            "homepage": "https://scandiweb.com",
+            "role": "Original author"
+        },
+        {
+            "name": "Selveq",
+            "homepage": "https://selveq.com",
+            "role": "Maintainer"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/selveq/customization/issues",
+        "source": "https://github.com/selveq/customization"
+    },
     "require": {
-        "magento/framework": "*",
-        "scandipwa/locale": "^2",
-        "magento/module-config": "*",
-        "magento/module-cms": "*",
-        "magento/module-eav": "*",
-        "magento/module-catalog": "*",
-        "magento/module-store": "*"
+        "php": "^8.3",
+        "magento/framework": "^103.0",
+        "magento/module-backend": "^102.0",
+        "magento/module-catalog": "^104.0",
+        "magento/module-cms": "^104.0",
+        "magento/module-config": "^101.2",
+        "magento/module-eav": "^102.1",
+        "magento/module-media-storage": "^100.4",
+        "magento/module-store": "^101.1",
+        "magento/module-theme": "^101.1",
+        "magento/module-ui": "^101.2",
+        "selveq/locale": "^3.0",
+        "selveq/module-core": "^2.0"
+    },
+    "replace": {
+        "scandipwa/customization": "*"
     },
     "autoload": {
         "files": [
             "src/registration.php"
         ],
         "psr-4": {
-            "ScandiPWA\\Customization\\": "src"
+            "ScandiPWA\\Customization\\": "src/"
         }
+    },
+    "archive": {
+        "exclude": [
+            "/.github",
+            "/.gitignore"
+        ]
     }
 }

@@ -1,15 +1,18 @@
 <?xml version="1.0"?>
+
 <!--
 /**
- * ScandiPWA - Progressive Web App for Magento
- *
- * Copyright © Scandiweb, Inc. All rights reserved.
+ * @category    ScandiPWA
+ * @package     ScandiPWA_Customization
+ * @copyright   Copyright © Scandiweb, Inc. All rights reserved.
+ * @copyright   Modifications © Selveq. All rights reserved.
+ * @license     OSL-3.0 (Open Software License ("OSL") v. 3.0)
  * See LICENSE for license details.
- *
- * @license OSL-3.0 (Open Software License ("OSL") v. 3.0)
  */
 -->
-<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Acl/etc/acl.xsd">
+
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="urn:magento:framework:Acl/etc/acl.xsd">
     <acl>
         <resources>
             <resource id="Magento_Backend::admin">
@@ -17,18 +20,11 @@
                     <resource id="Magento_Backend::stores_settings">
                         <resource id="Magento_Config::config">
                             <resource id="ScandiPWA_Customization::scandipwa_config" title="ScandiPWA">
-                                <resource
-                                    id="ScandiPWA_Customization::content_customization"
-                                    title="Content customization"
-                                />
-                                <resource
-                                    id="ScandiPWA_Customization::color_customization"
-                                    title="Color customization"
-                                />
-                                <resource
-                                    id="ScandiPWA_Customization::layout_direction"
-                                    title="Layout direction"
-                                />
+                                <resource id="ScandiPWA_Customization::content_customization"
+                                    title="Content customization" />
+                                <resource id="ScandiPWA_Customization::color_customization"
+                                    title="Color customization" />
+                                <resource id="ScandiPWA_Customization::layout_direction" title="Layout direction" />
                             </resource>
                         </resource>
                     </resource>

@@ -1,14 +1,18 @@
 <?php
+
 /**
- * @category ScandiPWA
- * @package ScandiPWA\Customization
- * @author Aleksandrs Kondratjevs <info@scandiweb.com>
- * @copyright Copyright (c) 2021 Scandiweb, Ltd (http://scandiweb.com)
- * @license http://opensource.org/licenses/afl-3.0.php Academic Free License (AFL 3.0)
+ * @category    ScandiPWA
+ * @package     ScandiPWA_Customization
+ * @copyright   Copyright © 2021 Scandiweb, Ltd (http://scandiweb.com)
+ * @copyright   Modifications © Selveq. All rights reserved.
+ * @license     http://opensource.org/licenses/afl-3.0.php Academic Free License (AFL 3.0)
+ * @license     OSL-3.0 (Open Software License ("OSL") v. 3.0)
+ * See LICENSE for license details.
  */
 
 namespace ScandiPWA\Customization\Block\Page;
 
+use JsonException;
 use Magento\Backend\Block\Page\Footer as CoreFooter;
 use Magento\Backend\Block\Template\Context;
 use Magento\Framework\App\ProductMetadataInterface;
@@ -18,22 +22,10 @@ use Magento\Framework\View\Design\Theme\ListInterface;
 
 class Footer extends CoreFooter
 {
-    const PACKAGE_JSON_FILE = 'package.json';
+    private const string PACKAGE_JSON_FILE = 'package.json';
 
-    /**
-     * ScandiPWA registration theme component name
-     */
-    const SCANDIPWA_COMPONENT_NAME = 'frontend/scandipwa';
-
-    /**
-     * @var ListInterface
-     */
-    protected $themeList;
-
-    /**
-     * @var ComponentRegistrarInterface
-     */
-    protected $componentRegistrar;
+    // matched against the theme's full path, which getFullPath() returns as "<area>/<theme>"
+    private const string SCANDIPWA_COMPONENT_NAME = 'frontend/scandipwa';
 
     /**
      * @var string|false
@@ -41,7 +33,6 @@ class Footer extends CoreFooter
     public $scandiPWAPackgeVersion;
 
     /**
-     * Footer constructor.
      * @param Context $context
      * @param ProductMetadataInterface $productMetadata
      * @param ListInterface $themeList
@@ -51,8 +42,8 @@ class Footer extends CoreFooter
     public function __construct(
         Context $context,
         ProductMetadataInterface $productMetadata,
-        ListInterface $themeList,
-        ComponentRegistrarInterface $componentRegistrar,
+        private readonly ListInterface $themeList,
+        private readonly ComponentRegistrarInterface $componentRegistrar,
         array $data = []
     ) {
         parent::__construct(
@@ -60,42 +51,45 @@ class Footer extends CoreFooter
             $productMetadata,
             $data
         );
-
-        $this->themeList = $themeList;
-        $this->componentRegistrar = $componentRegistrar;
     }
 
     /**
-     * Gets package.json file from ScandiPWA theme directory and sets in class properties its version
-     * In case if no version provided or theme directory doesn't exists, sets as false
+     * read the theme's package.json and set the version property from it
+     * @return void
      */
-    public function getPackageJsonData() {
+    public function getPackageJsonData()
+    {
         $pathToTheme = $this->getScandiPWADirectoryPath();
 
         if (!$pathToTheme) {
-           $this->scandiPWAPackgeJsonData = false;
-           return;
+            $this->scandiPWAPackgeVersion = false;
+            return;
         }
 
-        // Since theme registration files are located in separate folder 'magento' we need to fallback one step
-        // where is located package.json file
-        $pathToTheme = substr($pathToTheme, 0, -7) . self::PACKAGE_JSON_FILE;
+        // the theme registers itself from a subdirectory; package.json sits one level above it
+        $packageJsonPath = dirname($pathToTheme) . '/' . self::PACKAGE_JSON_FILE;
 
-        if (file_exists($pathToTheme)) {
-            $packageData = json_decode(file_get_contents($pathToTheme), true);
-            $this->scandiPWAPackgeVersion = $this->getScandiPWAFromPackageData($packageData);
-        } else {
+        if (!file_exists($packageJsonPath)) {
             $this->scandiPWAPackgeVersion = 'n/a';
+            return;
         }
+
+        try {
+            $packageData = json_decode(file_get_contents($packageJsonPath), true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            $this->scandiPWAPackgeVersion = 'n/a';
+            return;
+        }
+
+        $this->scandiPWAPackgeVersion = $this->getScandiPWAFromPackageData($packageData);
     }
 
     /**
-     * Checks is ScandiPWA theme presents in theme list
-     * and gets it path to directory where it is located
-     *
+     * the registered directory of the ScandiPWA theme, or null when no installed theme is one
      * @return string|null
      */
-    public function getScandiPWADirectoryPath() {
+    public function getScandiPWADirectoryPath()
+    {
         $themeDirectoryPath = null;
 
         foreach ($this->themeList as $theme) {
@@ -113,10 +107,12 @@ class Footer extends CoreFooter
     }
 
     /**
-     * @param $data
+     * extract the ScandiPWA version from package.json data
+     * @param array $data
      * @return string|false
      */
-    public function getScandiPWAFromPackageData($data) {
+    public function getScandiPWAFromPackageData($data)
+    {
         if (isset($data['dependencies']['@scandipwa/scandipwa'])) {
             return $data['dependencies']['@scandipwa/scandipwa'];
         }
@@ -125,9 +121,11 @@ class Footer extends CoreFooter
     }
 
     /**
+     * get the ScandiPWA theme version
      * @return string|false
      */
-    public function getScandiPWAVersion() {
+    public function getScandiPWAVersion()
+    {
         $this->getPackageJsonData();
 
         return $this->scandiPWAPackgeVersion;

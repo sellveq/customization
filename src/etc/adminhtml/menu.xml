@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+
+<!--
+/**
+ * @category    ScandiPWA
+ * @package     ScandiPWA_Customization
+ * @copyright   Copyright © Selveq. All rights reserved.
+ * @license     OSL-3.0 (Open Software License ("OSL") v. 3.0)
+ * See LICENSE for license details.
+ */
+-->
+
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
+    <menu>
+        <add title="Configuration"
+            module="ScandiPWA_Customization"
+            parent="Scandiweb_Core::all"
+            id="ScandiPWA_Customization::configuration"
+            resource="ScandiPWA_Customization::scandipwa_config"
+            sortOrder="100" />
+        <add title="Color customization"
+            module="ScandiPWA_Customization"
+            parent="ScandiPWA_Customization::configuration"
+            id="ScandiPWA_Customization::configuration_color_customization"
+            resource="ScandiPWA_Customization::color_customization"
+            action="adminhtml/system_config/edit/section/color_customization"
+            dependsOnModule="Scandiweb_Core"
+            sortOrder="10" />
+        <add title="Content customization"
+            module="ScandiPWA_Customization"
+            parent="ScandiPWA_Customization::configuration"
+            id="ScandiPWA_Customization::configuration_content_customization"
+            resource="ScandiPWA_Customization::content_customization"
+            action="adminhtml/system_config/edit/section/content_customization"
+            dependsOnModule="Scandiweb_Core"
+            sortOrder="20" />
+        <!-- webmanifest.xml declares no resource of its own, so this item guards on the parent ScandiPWA section -->
+        <add title="Webmanifest customization"
+            module="ScandiPWA_Customization"
+            parent="ScandiPWA_Customization::configuration"
+            id="ScandiPWA_Customization::configuration_webmanifest_customization"
+            resource="ScandiPWA_Customization::scandipwa_config"
+            action="adminhtml/system_config/edit/section/webmanifest_customization"
+            dependsOnModule="Scandiweb_Core"
+            sortOrder="30" />
+        <add title="Layout direction"
+            module="ScandiPWA_Customization"
+            parent="ScandiPWA_Customization::configuration"
+            id="ScandiPWA_Customization::configuration_layout_direction_configuration"
+            resource="ScandiPWA_Customization::layout_direction"
+            action="adminhtml/system_config/edit/section/layout_direction_configuration"
+            dependsOnModule="Scandiweb_Core"
+            sortOrder="40" />
+    </menu>
+</config>

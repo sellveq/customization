@@ -1,32 +1,35 @@
 <?php
+
 /**
- * @category ScandiPWA
- * @package ScandiPWA\Customization
- * @author Rihards Abolins <info@scandiweb.com>
- * @copyright Copyright (c) 2015 Scandiweb, Ltd (http://scandiweb.com)
- * @license http://opensource.org/licenses/afl-3.0.php Academic Free License (AFL 3.0)
+ * @category    ScandiPWA
+ * @package     ScandiPWA_Customization
+ * @copyright   Copyright © 2015 Scandiweb, Ltd (http://scandiweb.com)
+ * @copyright   Modifications © Selveq. All rights reserved.
+ * @license     http://opensource.org/licenses/afl-3.0.php Academic Free License (AFL 3.0)
+ * @license     OSL-3.0 (Open Software License ("OSL") v. 3.0)
+ * See LICENSE for license details.
  */
 
 namespace ScandiPWA\Customization\Controller;
 
-use Magento\Framework\App\Config\ScopeConfigInterface;
+use Exception;
+use InvalidArgumentException;
 use Magento\Framework\App\Filesystem\DirectoryList;
+use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Framework\Exception\ValidatorException;
 use Magento\Framework\Filesystem;
+use Magento\Framework\Filesystem\Glob;
 use Magento\Framework\Image\AdapterFactory;
+use Magento\Framework\UrlInterface;
+use Magento\Store\Model\StoreManagerInterface;
 
-/**
- * Class AppIcon
- * @package ScandiPWA\Customization\Controller
- */
 class AppIcon
 {
-    const REFERENCE_IMAGE_PATH = 'favicon/favicon.png';
+    private const string REFERENCE_IMAGE_PATH = 'favicon/favicon.png';
 
-    const STORAGE_PATH = 'favicon/icons/';
+    private const string STORAGE_PATH = 'favicon/icons/';
 
-    const MASKABLE_IMAGE_SIZE = 192;
-
-    const IMAGE_RESIZING_CONFIG = [
+    private const array IMAGE_RESIZING_CONFIG = [
         'ios' => [
             'type' => 'ios',
             'sizes' => [120, 152, 167, 180, 1024]
@@ -42,50 +45,45 @@ class AppIcon
     ];
 
     /**
-     * @var Filesystem
-     */
-    protected $fileSystem;
-
-    /**
-     * @var AdapterFactory
-     */
-    protected $imageFactory;
-
-    /**
-     * AppIcon constructor.
      * @param Filesystem $fileSystem
      * @param AdapterFactory $imageFactory
+     * @param StoreManagerInterface $storeManager
      */
     public function __construct(
-        Filesystem $fileSystem,
-        AdapterFactory $imageFactory
-    )
-    {
-        $this->imageFactory = $imageFactory;
-        $this->fileSystem = $fileSystem;
-    }
+        private readonly Filesystem $fileSystem,
+        private readonly AdapterFactory $imageFactory,
+        private readonly StoreManagerInterface $storeManager
+    ) {}
 
     /**
+     * save a resized image under the given name
+     * @param string $source
      * @param string $name
-     * @param int $width
-     * @param int $height
-     * @param string $absolutePath
-     * @return bool
+     * @param int|null $width
+     * @param int|null $height
+     * @return void
+     * @throws InvalidArgumentException
+     * @throws ValidatorException
      */
-    protected function saveImage ($source, $name, $width = null, $height = null)
+    protected function saveImage($source, $name, $width = null, $height = null)
     {
-        $path = $this->fileSystem->getDirectoryRead(DirectoryList::MEDIA)->getAbsolutePath(self::STORAGE_PATH) . $name . '.png';
+        $path = $this->fileSystem
+            ->getDirectoryRead(DirectoryList::MEDIA)
+            ->getAbsolutePath(self::STORAGE_PATH) . $name . '.png';
+
         $this->saveImageWithPath($source, $path, $width, $height);
     }
 
     /**
-     * @param $path
-     * @param $width
-     * @param $height
-     * @param $absolutePath
+     * resize and save an image to the given path
+     * @param string $source
+     * @param string $targetPath
+     * @param int|null $width
+     * @param int|null $height
      * @return bool
+     * @throws InvalidArgumentException
      */
-    protected function saveImageWithPath ($source, $targetPath, $width = null, $height = null)
+    protected function saveImageWithPath($source, $targetPath, $width = null, $height = null)
     {
         if (!file_exists($source) || !is_file($source)) {
             return false;
@@ -93,19 +91,18 @@ class AppIcon
 
         $imageResize = $this->imageFactory->create();
         $imageResize->open($source);
-        $imageResize->constrainOnly(true);
         $imageResize->keepTransparency(true);
 
-        // Resizes image
+        // every declared size is produced, upscaling a small source: a platform ignores an icon smaller than it claims
         if ($width !== null && $height !== null) {
             $imageResize->keepFrame(false);
             $imageResize->keepAspectRatio(false);
-            $imageResize->resize($width,$height);
+            $imageResize->resize($width, $height);
         }
 
         try {
             $imageResize->save($targetPath);
-        } catch (\Exception $e) {
+        } catch (Exception) {
             return false;
         }
 
@@ -113,33 +110,70 @@ class AppIcon
     }
 
     /**
+     * names of the icons that exist under the storage path
      * @return array
+     * @throws ValidatorException
      */
-    public function getIconData ()
+    protected function getGeneratedIconNames()
     {
+        $mediaDirectory = $this->fileSystem->getDirectoryRead(DirectoryList::MEDIA);
+        $names = [];
+
+        //phpcs:ignore Magento2.Functions.DiscouragedFunction
+        foreach ($mediaDirectory->search(self::STORAGE_PATH . '*.png') as $path) {
+            $names[basename($path, '.png')] = true;
+        }
+
+        return $names;
+    }
+
+    /**
+     * whether any icon has been generated yet
+     * @return bool
+     * @throws ValidatorException
+     */
+    public function hasGeneratedIcons()
+    {
+        return (bool)count($this->getGeneratedIconNames());
+    }
+
+    /**
+     * get icon data for web manifest generation
+     * @return array
+     * @throws ValidatorException
+     */
+    public function getIconData()
+    {
+        $generated = $this->getGeneratedIconNames();
         $output = [];
+
         foreach (self::IMAGE_RESIZING_CONFIG as $config) {
             foreach ($config['sizes'] as $size) {
-                $width = is_array($size) ? $size[0] : $size;
-                $height = is_array($size) ? $size[1] : $size;
-                $name = 'icon_' . $config['type'] . '_' . $width . 'x' . $height;
-                $src = '../' . self::STORAGE_PATH . $name . '.png';
-                $purpose = $width === self::MASKABLE_IMAGE_SIZE ? 'any maskable' : 'any';
+                $name = 'icon_' . $config['type'] . '_' . $size . 'x' . $size;
+                if (!isset($generated[$name])) {
+                    continue;
+                }
+
                 $output[] = [
-                    'src' => $src,
+                    // relative to the manifest's own URL under media/webmanifest/
+                    'src' => '../' . self::STORAGE_PATH . $name . '.png',
                     'type' => 'image/png',
-                    'sizes' => $width . 'x' . $height,
-                    'purpose' => $purpose
+                    'sizes' => $size . 'x' . $size,
+                    'purpose' => 'any'
                 ];
             }
         }
+
         return $output;
     }
 
     /**
+     * get icon links keyed by type and size
      * @return array[]
+     * @throws NoSuchEntityException
+     * @throws ValidatorException
      */
-    public function getIconLinks ()
+    public function getIconLinks()
     {
         $output = [
             'icon' => [],
@@ -148,21 +182,22 @@ class AppIcon
             'android' => []
         ];
 
+        $generated = $this->getGeneratedIconNames();
+        $baseUrl = $this->storeManager->getStore()->getBaseUrl(UrlInterface::URL_TYPE_MEDIA) . self::STORAGE_PATH;
+
         foreach (self::IMAGE_RESIZING_CONFIG as $type => $config) {
             foreach ($config['sizes'] as $size) {
-                $width = is_array($size) ? $size[0] : $size;
-                $height = is_array($size) ? $size[1] : $size;
-                $size = $width . 'x' . $height;
-                $name = 'icon_' . $config['type'] . '_' . $width . 'x' . $height;
-                $href = '/media/' . self::STORAGE_PATH . $name . '.png';
-                $output[$type][$size] = [
-                    'href' => $href,
-                    'sizes' => $size
+                $name = 'icon_' . $config['type'] . '_' . $size . 'x' . $size;
+                if (!isset($generated[$name])) {
+                    continue;
+                }
+
+                $link = [
+                    'href' => $baseUrl . $name . '.png',
+                    'sizes' => $size . 'x' . $size
                 ];
-                $output['icon'][$size] = [
-                    'href' => $href,
-                    'sizes' => $size
-                ];
+                $output[$type][$size . 'x' . $size] = $link;
+                $output['icon'][$size . 'x' . $size] = $link;
             }
         }
 
@@ -170,31 +205,43 @@ class AppIcon
     }
 
     /**
-     * Creates main favicon icon.
+     * write the reference favicon the resized icons are cut from
+     * @param string $sourcePath
+     * @return void
+     * @throws InvalidArgumentException
+     * @throws ValidatorException
      */
-    private function buildFaviconImage($sourcePath)
+    private function buildFaviconImage(string $sourcePath)
     {
-        $targetPath = $this->fileSystem->getDirectoryRead(DirectoryList::MEDIA)->getAbsolutePath(self::REFERENCE_IMAGE_PATH);
+        $targetPath = $this->fileSystem
+            ->getDirectoryRead(DirectoryList::MEDIA)
+            ->getAbsolutePath(self::REFERENCE_IMAGE_PATH);
+
         $this->saveImageWithPath($sourcePath, $targetPath);
     }
 
     /**
-     * @return bool
+     * build all app icon variants from the given source image
+     * @param string $sourcePath
+     * @return void
+     * @throws InvalidArgumentException
+     * @throws ValidatorException
      */
-    public function buildAppIcons ($sourcePath)
+    public function buildAppIcons(string $sourcePath)
     {
-        if (!file_exists($sourcePath))
-            return false;
+        if (!file_exists($sourcePath)) {
+            return;
+        }
 
         $this->buildFaviconImage($sourcePath);
 
         foreach (self::IMAGE_RESIZING_CONFIG as $config) {
             foreach ($config['sizes'] as $size) {
-                $width = is_array($size) ? $size[0] : $size;
-                $height = is_array($size) ? $size[1] : $size;
-                $name = 'icon_' . $config['type'] . '_' . $width . 'x' . $height;
-                $this->saveImage($sourcePath, $name, $width, $height);
+                $this->saveImage($sourcePath, 'icon_' . $config['type'] . '_' . $size . 'x' . $size, $size, $size);
             }
         }
+
+        // Glob caches per process, so without this a reader that globbed earlier still sees no icons
+        Glob::clearCache();
     }
 }

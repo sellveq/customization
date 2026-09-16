@@ -1,15 +1,18 @@
 <?xml version="1.0"?>
+
 <!--
 /**
- * ScandiPWA - Progressive Web App for Magento
- *
- * Copyright © Scandiweb, Inc. All rights reserved.
+ * @category    ScandiPWA
+ * @package     ScandiPWA_Customization
+ * @copyright   Copyright © Scandiweb, Inc. All rights reserved.
+ * @copyright   Modifications © Selveq. All rights reserved.
+ * @license     OSL-3.0 (Open Software License ("OSL") v. 3.0)
  * See LICENSE for license details.
- *
- * @license OSL-3.0 (Open Software License ("OSL") v. 3.0)
  */
 -->
-<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
     <default>
         <color_customization>
             <enable_color_customization>
@@ -26,23 +29,21 @@
                 <secondary_light_color>f3f3f3d1</secondary_light_color>
             </secondary_colors>
         </color_customization>
-        <content_customization>
 
-        </content_customization>
         <webmanifest_customization>
             <webmanifest>
                 <name>ScandiPWA</name>
                 <short_name>ScandiPWA</short_name>
-                <description>ScandiPWA theme DEMO store</description>
                 <background_color>ffffff</background_color>
                 <lang>en-US</lang>
                 <theme_color>ffffff</theme_color>
-                <start_url>/?utm_source=homescreen&amp;utm_medium=scandiPWA</start_url>
+                <start_url>/</start_url>
                 <display>standalone</display>
                 <orientation>portrait</orientation>
                 <scope>/</scope>
             </webmanifest>
         </webmanifest_customization>
+
         <layout_direction_configuration>
             <layout_direction_section>
                 <layout_direction>ltr</layout_direction>
